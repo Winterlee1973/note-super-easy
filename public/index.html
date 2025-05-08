@@ -1,14 +1,247 @@
-
-<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Notes</title>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>NoteCraft</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" />
 <style>
-body{font-family:sans-serif;max-width:600px;margin:40px auto;padding:0 1rem;}
-input,textarea{width:100%;margin:4px 0;padding:8px;}
-button{padding:8px 16px;margin:4px 4px 8px 0;cursor:pointer;}
-#notes li{border:1px solid #ccc;margin:4px 0;padding:6px;border-radius:6px;list-style:none;}
-</style></head><body>
-<h1>📝 Notes App</h1>
-<section id="auth"><input id="email" placeholder="email"><input id="password" type="password" placeholder="password">
-<button id="register">Register</button><button id="login">Login</button><span id="msg"></span></section>
-<section id="new" style="display:none;"><input id="title" placeholder="title"><textarea id="content" rows="4" placeholder="content"></textarea><button id="add">Add</button></section>
-<ul id="notes"></ul>
-<script src="app.js"></script></body></html>
+:root{
+  --brand:#4f46e5;
+  --brand-light:#eef0ff;
+  --bg:#f8f9fb;
+  --card:#ffffff;
+  --text:#333;
+  --radius:12px;
+  --shadow:0 4px 14px rgba(0,0,0,.07);
+}
+*{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+body{margin:0;background:var(--bg);color:var(--text);}
+header{
+  background:linear-gradient(135deg,var(--brand),#6366f1);
+  color:#fff;padding:.8rem 1.2rem;display:flex;align-items:center;justify-content:space-between;
+}
+header h1{margin:0;font-size:1.3rem;display:flex;align-items:center;gap:.5rem;}
+header img{height:32px}
+header nav button{
+  margin-left:.5rem;padding:.4rem .9rem;font-size:.9rem;border:0;border-radius:6px;cursor:pointer;
+}
+header nav .primary{background:#fff;color:var(--brand);}
+header nav .secondary{background:rgba(255,255,255,.2);color:#fff;}
+#hero{
+  text-align:center;padding:6rem 1rem;
+  background:url("https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=1600&q=60") center/cover no-repeat;
+  color:#fff;
+}
+#hero h2{font-size:2rem;margin:.2rem 0;}
+#hero p{font-size:1.1rem;opacity:.9}
+#workspace{display:flex;height:calc(100vh - 64px);} /* header = 64px */
+aside{
+  width:260px;background:var(--brand-light);padding:1rem;overflow:auto;
+  border-right:1px solid #d9dcff;
+}
+aside button#newBtn{
+  width:100%;padding:.6rem;border:0;border-radius:var(--radius);background:var(--brand);color:#fff;font-weight:600;cursor:pointer;
+}
+aside input#search{
+  margin:1rem 0;width:100%;padding:.5rem;border-radius:8px;border:1px solid #c4c5ff;
+}
+#noteList{list-style:none;padding:0;margin:0;}
+#noteList li{
+  background:var(--card);padding:.6rem .8rem;margin:.3rem 0;border-radius:8px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;box-shadow:var(--shadow);transition:.15s;
+}
+#noteList li.active{border:2px solid var(--brand);}
+#noteList li span.icons i{cursor:pointer;margin-left:.4rem;}
+main{flex:1;padding:1rem;display:flex;flex-direction:column;}
+#editor{flex:1;background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:1rem;}
+#saveBtn{align-self:flex-end;padding:.5rem 1.2rem;border:0;border-radius:var(--radius);background:var(--brand);color:#fff;font-weight:600;cursor:pointer;}
+/* modal */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:100;transition:.2s;opacity:1;visibility:visible;}
+.modal.hidden{opacity:0;visibility:hidden;}
+.modal-content{background:#fff;padding:2rem;border-radius:var(--radius);width:320px;position:relative;box-shadow:var(--shadow);}
+.modal-content .close{position:absolute;top:8px;right:12px;font-size:1.3rem;cursor:pointer;}
+.modal-content input{width:100%;padding:.6rem;margin:.5rem 0;border:1px solid #ccc;border-radius:8px;}
+.modal-content button{width:100%;padding:.6rem;margin-top:.6rem;border:0;border-radius:8px;background:var(--brand);color:#fff;font-weight:600;cursor:pointer;}
+.modal-content p{font-size:.85rem;text-align:center;margin:.3rem 0;cursor:pointer;color:var(--brand);}
+</style>
+</head>
+<body>
+<header>
+  <h1><img src="https://cdn-icons-png.flaticon.com/512/5968/5968330.png" alt="logo">NoteCraft</h1>
+  <nav id="navAuth">
+    <button class="secondary" id="loginBtn">Login</button>
+    <button class="primary" id="registerBtn">Register</button>
+  </nav>
+  <nav id="navUser" style="display:none">
+    <span id="userEmail"></span>
+    <button class="secondary" id="logoutBtn">Logout</button>
+  </nav>
+</header>
+
+<section id="hero">
+  <h2>Welcome to NoteCraft</h2>
+  <p>Capture ideas, tasks &amp; inspiration anywhere.</p>
+</section>
+
+<div id="workspace" style="display:none">
+  <aside>
+    <button id="newBtn">+ New Note</button>
+    <input id="search" placeholder="Search notes…">
+    <ul id="noteList"></ul>
+  </aside>
+  <main>
+    <div id="editor"></div>
+    <button id="saveBtn">💾 Save</button>
+  </main>
+</div>
+
+<!-- Auth Modal -->
+<div id="authModal" class="modal hidden">
+  <div class="modal-content">
+    <span class="close">&times;</span>
+    <h2 id="authTitle">Login</h2>
+    <input id="authEmail" placeholder="Email">
+    <input id="authPwd" type="password" placeholder="Password">
+    <button id="authSubmit">Submit</button>
+    <p id="authToggle">Need an account? Register</p>
+    <p id="authMsg" style="color:red"></p>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js"></script>
+<script>
+/* ---------- CONFIG ---------- */
+const DEMO = true;               // flip to false when running with your API
+const BASE = '';                 // prepend your ngrok URL if tunnelling
+
+/* ---------- STATE ---------- */
+let token = localStorage.getItem('token');
+let currentId = null;
+let notes = [];
+let registerMode = false;
+const quill = new Quill('#editor', {theme:'snow'});
+
+/* ---------- DOM ---------- */
+const qs  = q => document.querySelector(q);
+const qsa = q => [...document.querySelectorAll(q)];
+const navAuth   = qs('#navAuth');
+const navUser   = qs('#navUser');
+const userEmail = qs('#userEmail');
+const hero      = qs('#hero');
+const workspace = qs('#workspace');
+const authModal = qs('#authModal');
+const authTitle = qs('#authTitle');
+const authMsg   = qs('#authMsg');
+qs('#loginBtn').onclick = () => openAuth(false);
+qs('#registerBtn').onclick = () => openAuth(true);
+qs('#logoutBtn').onclick = logout;
+qs('#authToggle').onclick = () => openAuth(!registerMode);
+qs('#authSubmit').onclick = submitAuth;
+authModal.querySelector('.close').onclick = closeAuth;
+authModal.onclick = e => { if(e.target===authModal) closeAuth(); };
+qs('#newBtn').onclick = () => { currentId=null; quill.setText(''); highlight(); };
+qs('#saveBtn').onclick = saveNote;
+qs('#search').oninput = e => renderList(e.target.value);
+
+/* ---------- API wrapper ---------- */
+async function api(path,opts={}){
+  if(DEMO) return mock(path,opts);   // demo mode for Canvas
+  const res = await fetch(BASE+path,{
+    ...opts,
+    headers:{ 'Content-Type':'application/json', ...(token?{Authorization:`Bearer ${token}`}:{}) }
+  });
+  if(!res.ok) throw await res.json();
+  return res.json();
+}
+
+/* ---------- DEMO in‑memory backend ---------- */
+function mock(path,opts){
+  const b = opts.body?JSON.parse(opts.body):{};
+  if(path==='/register'||path==='/login'){ token='demo';localStorage.setItem('token',token);return Promise.resolve({token}); }
+  if(path==='/notes' && opts.method==='GET') return Promise.resolve(notes);
+  if(path==='/notes' && opts.method==='POST'){ const id=Date.now();notes.push({id,title:b.title,content:b.content});return Promise.resolve(notes.at(-1)); }
+  const m=path.match(/\\/notes\\/(\\d+)/); if(!m) return Promise.reject({error:'unknown'});
+  const id=+m[1];
+  if(opts.method==='PUT'){ const n=notes.find(x=>x.id===id);Object.assign(n,b);return Promise.resolve(n);}
+  if(opts.method==='DELETE'){ notes=notes.filter(x=>x.id!==id);return Promise.resolve();}
+}
+
+/* ---------- Auth ---------- */
+function openAuth(isRegister){
+  registerMode = isRegister;
+  authTitle.textContent = isRegister?'Register':'Login';
+  qs('#authToggle').textContent = isRegister?'Have an account? Login':'Need an account? Register';
+  authMsg.textContent='';
+  qs('#authEmail').value='';
+  qs('#authPwd').value='';
+  authModal.classList.remove('hidden');
+}
+function closeAuth(){ authModal.classList.add('hidden'); }
+async function submitAuth(){
+  try{
+    const email=qs('#authEmail').value.trim(), pwd=qs('#authPwd').value;
+    const route = registerMode?'/register':'/login';
+    const {token:t} = await api(route,{method:'POST',body:JSON.stringify({email,password:pwd})});
+    token=t; localStorage.setItem('token',token);
+    userEmail.textContent=email;
+    navAuth.style.display='none'; navUser.style.display='flex';
+    hero.style.display='none'; workspace.style.display='flex';
+    closeAuth(); loadNotes();
+  }catch(err){ authMsg.textContent=err.error||'Error'; }
+}
+function logout(){
+  token=null; localStorage.removeItem('token');
+  workspace.style.display='none'; hero.style.display='block';
+  navUser.style.display='none'; navAuth.style.display='flex';
+}
+
+/* ---------- Notes ---------- */
+async function loadNotes(){
+  notes = await api('/notes');
+  renderList();
+  if(notes.length){currentId=notes[0].id;quill.root.innerHTML=notes[0].content;}else{quill.setText('');currentId=null;}
+  highlight();
+}
+function renderList(filter=''){
+  const ul=qs('#noteList'); ul.innerHTML='';
+  notes.filter(n=>n.title.toLowerCase().includes(filter.toLowerCase())).forEach(n=>{
+    const li=document.createElement('li');
+    li.innerHTML=`<span>${n.title||'(untitled)'}</span>
+      <span class="icons">
+        <i onclick="editNote(${n.id})">✏️</i>
+        <i onclick="delNote(${n.id})">🗑️</i>
+      </span>`;
+    if(n.id===currentId) li.classList.add('active');
+    li.onclick=()=>{currentId=n.id;quill.root.innerHTML=n.content;highlight();};
+    ul.append(li);
+  });
+}
+function highlight(){
+  qsa('#noteList li').forEach(li=>li.classList.remove('active'));
+  const active=qsa('#noteList li').find(li=>li.textContent.includes(currentId));
+  if(active) active.classList.add('active');
+}
+async function saveNote(){
+  const content=quill.root.innerHTML, title=quill.getText().trim().split('\\n')[0].slice(0,50);
+  if(currentId){
+    await api('/notes/'+currentId,{method:'PUT',body:JSON.stringify({title,content})});
+    notes.find(n=>n.id===currentId).title=title; notes.find(n=>n.id===currentId).content=content;
+  }else{
+    const n=await api('/notes',{method:'POST',body:JSON.stringify({title,content})});
+    notes.unshift(n); currentId=n.id;
+  }
+  renderList(); highlight();
+}
+async function delNote(id){
+  await api('/notes/'+id,{method:'DELETE'}); notes=notes.filter(n=>n.id!==id); quill.setText(''); currentId=null; renderList();
+}
+window.editNote=id=>{ currentId=id; const n=notes.find(x=>x.id===id); quill.root.innerHTML=n.content; highlight(); };
+
+/* ---------- init ---------- */
+if(token){
+  navAuth.style.display='none'; navUser.style.display='flex';
+  hero.style.display='none'; workspace.style.display='flex';
+  loadNotes();
+}
+</script>
+</body>
+</html>

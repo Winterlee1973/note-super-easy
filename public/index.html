@@ -1,0 +1,14 @@
+
+<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Notes</title>
+<style>
+body{font-family:sans-serif;max-width:600px;margin:40px auto;padding:0 1rem;}
+input,textarea{width:100%;margin:4px 0;padding:8px;}
+button{padding:8px 16px;margin:4px 4px 8px 0;cursor:pointer;}
+#notes li{border:1px solid #ccc;margin:4px 0;padding:6px;border-radius:6px;list-style:none;}
+</style></head><body>
+<h1>📝 Notes App</h1>
+<section id="auth"><input id="email" placeholder="email"><input id="password" type="password" placeholder="password">
+<button id="register">Register</button><button id="login">Login</button><span id="msg"></span></section>
+<section id="new" style="display:none;"><input id="title" placeholder="title"><textarea id="content" rows="4" placeholder="content"></textarea><button id="add">Add</button></section>
+<ul id="notes"></ul>
+<script src="app.js"></script></body></html>
